@@ -1,8 +1,35 @@
 local ipairs = ipairs
 local pairs = pairs
 local jsonlua = require "JSON"
+local setmetatable = setmetatable
 
 -- arrays
+
+local array_metatable = {}
+
+array_metatable.__index = array_metatable
+function array_metatable:map(func)
+    return Array.of(map(self, func))
+end
+
+function array_metatable:filter(func)
+    return Array.of(filter(self, func))
+end
+
+function array_metatable:reduce(func, initial)
+    return reduce(self, func, initial)
+end
+
+Array = {}
+function Array.of(...)
+    local args = {...}
+
+    if (type(args[1]) == 'table' and #args == 1) then
+        return setmetatable(args[1], array_metatable)
+    end
+
+    return setmetatable(args, array_metatable)
+end
 
 function map(list, func)
     local table = {}
@@ -40,7 +67,9 @@ end
 
 -- tables
 
-function keys(list)
+Object = {}
+
+function Object.keys(list)
     local table = {}
     local idx = 1
     for k in pairs(list) do
@@ -51,7 +80,7 @@ function keys(list)
     return table
 end
 
-function values(list)
+function Object.values(list)
     local table = {}
     local idx = 1
     for _, v in pairs(list) do
@@ -62,7 +91,7 @@ function values(list)
     return table
 end
 
-function entries(list)
+function Object.entries(list)
     local table = {}
     local idx = 1
     for k, v in pairs(list) do
@@ -120,14 +149,3 @@ end
 function id(x)
     return x
 end
-
--- operators
-
-local sm = setmetatable
-local function infix(f)
-    local mt = { __sub = function(self, b) return f(self[1], b) end }
-    return sm({}, { __sub = function(a, _) return sm({ a }, mt) end })
-end
-
--- pipe (2 -p- dec -p- odd --> true)
-p = infix(function(arg, func) return func(arg) end)
